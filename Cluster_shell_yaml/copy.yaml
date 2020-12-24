@@ -1,0 +1,36 @@
+- hosts: [all]
+  tasks:
+    - name: 系统初始化
+      shell: systemctl stop firewalld.service
+      shell: sed  's/TimeoutSec=0/TimeoutSec=200/g' /usr/lib/systemd/system/rc-local.service -i
+      shell: setenforce 0
+      shell: getenforce
+      shell: sed -i 's#=enforcing#=disabled#g' /etc/selinux/config
+ 
+
+- hosts: [slave]
+  tasks: 
+    - name: 拷贝安装文件到slave节点<a01>
+      copy: src=/root/K8s/  dest=/root/K8s/
+    - name: 执行系统初始化脚本<a02>
+      shell: rpm -ivh --nodeps  --force /root/K8s/yum/deltarpm*.rpm
+      shell: rpm -ivh --nodeps  --force /root/K8s/yum/libxml2-python*.rpm
+      shell: rpm -ivh --nodeps  --force /root/K8s/yum/python-deltarpm*.rpm
+      shell: rpm -ivh --nodeps  --force /root/K8s/yum/createrepo*.noarch.rpm
+      shell: /usr/bin/createrepo -pdo /root/K8s/yum/  /root/K8s/yum/
+      shell: yum clean all
+      shell: yum list echo '本地yum源测试成功'
+      shell: echo '本地yum源测试成功'
+    - name: ansible客户端插件安装install_libselinux-python<a03>
+      yum: name=libselinux-python state=latest  disable_gpg_check=yes
+    - name: ansible客户端插件安装install_ntp<a04>
+      yum: name=ntp    state=latest  disable_gpg_check=yes
+    - name: ansible客户端插件安装install_net-tools<a05>
+      yum: name=net-tools   state=latest  disable_gpg_check=yes
+    - name: ansible客户端插件安装install_net-tools<a06>
+      yum: name=net-tools   state=latest  disable_gpg_check=yes
+    - name: ansible客户端插件安装install_sshpass<a07>
+      yum: name=sshpass   state=latest  disable_gpg_check=yes
+    - name: ansible客户端插件安装install_sshpass<a08>
+      yum: name=rsync   state=latest  disable_gpg_check=yes   
+

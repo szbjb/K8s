@@ -1,0 +1,4 @@
+- hosts: [master]
+  tasks: 
+    - name: 启用coredns
+      shell:  kubectl  apply -f /root/K8s/k8s_yaml/coredns/coredns.yaml

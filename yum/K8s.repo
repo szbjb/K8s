@@ -1,0 +1,5 @@
+[K8s]
+name=K8s
+baseurl=file:///root/K8s/yum
+enabled=1
+gpgcheck=0

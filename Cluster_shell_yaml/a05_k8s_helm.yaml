@@ -1,0 +1,4 @@
+- hosts: [master]
+  tasks: 
+    - name: 离线安装helm
+      shell:  sh /root/K8s/helm/install_helm.sh

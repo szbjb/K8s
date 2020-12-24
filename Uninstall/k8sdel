@@ -1,0 +1,104 @@
+#!/bin/bash
+#停程序s
+systemctl  stop  flanneld  kube-apiserver  kube-controller-manager   kube-scheduler  etcd  kubelet kube-proxy docker  ngingx  glusterd     2>/dev/null ||true
+systemctl  is-active  flanneld kube-apiserver  kube-controller-manager   kube-scheduler  etcd  kubelet kube-proxy docker  ngingx  glusterd 2>/dev/null ||true
+#清除相关环境变量
+>  /etc/rc.local
+del_var="helm  kubectl"
+for var in  ${del_var}; do sed -i "/${var}/d"  2>/dev/null /etc/profile;echo $var ;  done
+for var in  ${del_var}; do sed -i "/${var}/d"  2>/dev/null /root/.bash_profile;echo $var ;  done
+#卸载rpm程序
+for  var  in      $(yum list installed| grep  -i "@K8s"|awk   '{print  $1}')   ; do   yum remove  -y  $var 2> /dev/null||true   ; done
+#清k8s二进制程序
+#删K8s相关组件 systemd
+rm -fv $(systemctl  status    kube-apiserver flanneld  kube-controller-manager   kube-scheduler  etcd  kubelet kube-proxy docker  ngingx  glusterd | grep load 2>/dev/null |awk   '{print  $3}'|sed  's/(//g'|sed  's/;//g' )
+rm  -rfv /usr/local/bin/cfssl*   2>/dev/null ||true
+#etcd
+rm  -rfv  /etc/etcd/   2>/dev/null ||true
+rm  -rfv  /usr/local/bin/etc*   2>/dev/null ||true
+#Flannel
+rm  -rfv  /etc/kubernetes/   2>/dev/null ||true
+rm  -rfv  /var/lib/etcd/  2>/dev/null ||true
+rm  -rfv  /usr/local/bin/{flanneld,mk-docker-opts.sh}   2>/dev/null ||true
+rm  -rfv  /usr/local/bin/{kube-proxy,kubelet,kubectl,kube-apiserver,kube-scheduler,kube-controller-manager}   2>/dev/null ||true
+#残留6
+> /etc/hosts
+rm  -rfv    /opt/*   2>/dev/null ||true
+rm  -rfv     /tmp/*   2>/dev/null ||true
+# rm  -rfv  /data/*   2>/dev/null ||true
+rm -rfv /var/log   2>/dev/null ||true
+mkdir  -pv /var/log   2>/dev/null ||true
+rm  -rfv     > /etc/exports   2>/dev/null ||true
+rm -rfv  /var/lib/docker*  2>/dev/null ||true
+rm -fv  /usr/local/bin/{helm}  2>/dev/null ||true
+rm -rfv    /root/.kube   2>/dev/null ||true
+for var in  $(find  /root/K8s  -type f -maxdepth 1 -name    "*.txt"); do rm -fv  ${var} 2>/dev/null ;echo $var ;  done
+#清除安装包
+rm -rfv  /root/[Kk]8s   2>/dev/null ||true
+ rm  -rfv  /var/lib/heketi/
+timeout 30   rm -rfv  /var/lib/kubelet/
+ rm -rfv    /var/lib/glusterd
+ rm -rfv    /var/lib/containerd
+ rm  -rfv /var/lib/heketi/mounts/vg_*
+rm  -rfv /etc/lvm/archive/vg_*
+rm -rfv /dev/mapper/vg_*
+
+#清空定时任务
+crontab   -r
+
+#清空数据盘若存在数据盘
+dev_data_name=$(lsblk  -r| grep     '\/data'| awk   '{print  $1}'|sed  "s/[0-9]//g")
+dev_root_name=$(lsblk     -r| grep  "\/boot"|awk   '{print  $1}'|head   -n1 |sed  "s/[0-9]//g")
+echo  "数据盘为${dev_data_name}"
+echo  "系统盘为${dev_root_name}"
+lsblk  -l| grep     '\/data' && {
+sed -i   "/${var}/d"  2>/dev/null /etc/fstab
+#  exit 0
+}
+[ ! -n "${dev_data_name}" ] &&  exit 0
+
+if  [[ "${dev_data_name}" != "${dev_root_name}" ]]
+then
+echo  "检测到数据盘和系统盘是独立的盘 即将进行暴力删除数据盘所有分区"
+echo  "数据盘为${dev_data_name}"
+#卸载硬盘挂载  清空开机自启残缺
+lsblk  -r| grep     '\/data' && umount  -f   /data/  || {
+fuser -cu /data/ && fuser -ck /data/     2>/dev/null
+sleep 3
+umount  -f   /data/   2>/dev/null
+#清理nfsd
+echo  "清理nfsd"
+nohup  kill -9  $(ps -ef | grep   '[n]fsd'|awk   '{print  $2}')  &
+umount  -f   /data/   2>/dev/null
+}
+dev_var="${dev_data_name}  heketi"
+for var in  ${dev_var}; do sed -i   "/${var}/d"  2>/dev/null /etc/fstab;echo $var ;  done
+#删分区
+echo  "删分区"
+_dd ()  {
+/usr/bin/expect << EOF
+spawn /usr/sbin/parted /dev/${dev_data_name}  rm $var
+expect {
+        "Ignore" {send "Ignore\r";}
+}
+expect eof
+EOF
+}
+_ee ()  {
+mkntfs -f /dev/${dev_data_name}1    
+/usr/bin/expect << EOF
+spawn /usr/sbin/parted /dev/${dev_data_name}  rm 1
+expect {
+        "Ignore" {send "Ignore\r";}
+}
+expect eof
+EOF
+}
+#for var in  $(parted /dev/${dev_data_name} p| egrep  "primary$|logical$"|awk   '{print  $1}')  ; do  parted   /dev/${dev_data_name}  rm ${var} ; done
+for var in  $(parted /dev/${dev_data_name} p| egrep  "primary$|logical$"|awk   '{print  $1}')  ; do  umount   /data -f;sleep 3;_dd;umount   /data -f && _dd ; done
+sleep 1
+partprobe /dev/${dev_data_name}
+parted   /dev/${dev_data_name}  p
+#二次深度清理
+_ee
+fi

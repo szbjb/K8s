@@ -1,0 +1,4 @@
+- hosts: [master]
+  tasks: 
+    - name: 启用prometheus
+      shell:  sh  /root/K8s/k8s_yaml/prometheus/prometheus_install.sh

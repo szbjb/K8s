@@ -1,0 +1,12 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: web  //项目名称
+spec:
+  rules:
+  - host: xxx.xxx.com //域名地址
+    http:
+      paths:
+      - backend:
+          serviceName: web  //项目名称
+          servicePort: 80

@@ -1,0 +1,34 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: web-nginx
+  labels:
+    app: web-nginx
+spec:
+ updateStrategy:
+  type: RollingUpdate
+ template:
+  metadata:
+   labels:
+    app:  web-nginx
+  spec:
+   containers:
+   - name:  web-nginx
+     image: centos
+     imagePullPolicy: IfNotPresent
+     ports:
+     - containerPort: 80
+     command: ["sleep","111111"]
+    #  command: ["/bin/sh","/root/start.sh"]
+     volumeMounts:
+     - name: webnginxconf
+       mountPath: /configfiles
+   volumes:
+   - name: webnginxconf
+     configMap:
+       name: cm-webnginxconfigfiles
+       items:
+       - key: key-nginxconf
+         path: nginx.conf
+       - key: key-nginx01conf
+         path: web_01.conf
